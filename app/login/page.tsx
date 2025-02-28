@@ -15,7 +15,7 @@ export default async function LoginPage() {
 	}
 
 	return (
-		<Container>
+		<Container size="1">
 			<div className="min-h-screen flex items-center justify-center p-4">
 				<Auth />
 			</div>
