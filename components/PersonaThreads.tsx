@@ -1,6 +1,6 @@
-import { Avatar, Box, Flex, IconButton, ScrollArea, Text } from "@radix-ui/themes";
-import { IconMessagePlus } from "@tabler/icons-react";
-import { type Thread, type Persona, createThread } from "@/lib/supabase";
+import { Avatar, Box, Flex, IconButton, ScrollArea, Text, Dialog, TextField, Button } from "@radix-ui/themes";
+import { IconMessagePlus, IconEdit } from "@tabler/icons-react";
+import { type Thread, type Persona, createThread, updateThread } from "@/lib/supabase";
 import { useState } from "react";
 
 type PersonaThreadsProps = {
@@ -19,6 +19,8 @@ export default function PersonaThreads({
 	selectedThreadId,
 }: PersonaThreadsProps) {
 	const [error, setError] = useState<string>();
+	const [editingThread, setEditingThread] = useState<Thread | null>(null);
+	const [newTitle, setNewTitle] = useState("");
 
 	const handleNewThread = async () => {
 		try {
@@ -26,6 +28,17 @@ export default function PersonaThreads({
 			onNewThread(thread);
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Failed to create thread");
+		}
+	};
+
+	const handleRenameThread = async (thread: Thread) => {
+		try {
+			const updatedThread = await updateThread(thread.id, { title: newTitle });
+			setEditingThread(null);
+			// Trigger a refresh of the threads list
+			onSelectThread(updatedThread);
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Failed to rename thread");
 		}
 	};
 
@@ -69,14 +82,58 @@ export default function PersonaThreads({
 										borderBottom: "1px solid var(--gray-6)",
 										color: selectedThreadId === thread.id ? "var(--accent-10)" : undefined,
 									}}
-									onClick={() => onSelectThread(thread)}
 									p={"3"}
 									direction="column"
+									gap="2"
 								>
-									<Text weight="medium">{thread.title}</Text>
-									<Text size="2" color="gray">
-										{new Date(thread.created_at).toLocaleDateString()}
-									</Text>
+									<Flex justify="between" align="center">
+										<Box onClick={() => onSelectThread(thread)}>
+											<Text weight="medium">{thread.title}</Text>
+											<Text size="2" color="gray">
+												{new Date(thread.created_at).toLocaleDateString()}
+											</Text>
+										</Box>
+										<Dialog.Root
+											open={editingThread?.id === thread.id}
+											onOpenChange={(open) => {
+												if (!open) setEditingThread(null);
+												if (open) {
+													setEditingThread(thread);
+													setNewTitle(thread.title);
+												}
+											}}
+										>
+											<Dialog.Trigger>
+												<IconButton variant="ghost" size="1">
+													<IconEdit size={16} />
+												</IconButton>
+											</Dialog.Trigger>
+											<Dialog.Content>
+												<Dialog.Title>Rename Thread</Dialog.Title>
+												<Box my="4">
+													<TextField.Root
+														value={newTitle}
+														onChange={(e) => setNewTitle(e.target.value)}
+														placeholder="Enter new title"
+													/>
+												</Box>
+												<Flex gap="3" justify="end">
+													<Dialog.Close>
+														<Button variant="soft" color="gray">
+															Cancel
+														</Button>
+													</Dialog.Close>
+													<Button
+														variant="solid"
+														onClick={() => handleRenameThread(thread)}
+														disabled={!newTitle.trim() || newTitle === thread.title}
+													>
+														Save
+													</Button>
+												</Flex>
+											</Dialog.Content>
+										</Dialog.Root>
+									</Flex>
 								</Flex>
 							))
 						)}

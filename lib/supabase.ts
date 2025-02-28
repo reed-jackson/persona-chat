@@ -214,3 +214,44 @@ export async function saveWorkplaceContext(context: WorkplaceContextInput) {
 		return data as WorkplaceContext;
 	}
 }
+
+export async function updateThread(threadId: string, updates: Partial<Thread>) {
+	const {
+		data: { user },
+	} = await supabase.auth.getUser();
+
+	if (!user) throw new Error("User not authenticated");
+
+	const { data, error } = await supabase
+		.from("threads")
+		.update(updates)
+		.eq("id", threadId)
+		.eq("user_id", user.id)
+		.select()
+		.single();
+
+	if (error) throw error;
+	return data;
+}
+
+export async function updateUserEmail(email: string) {
+	const supabase = createClient();
+	const { data, error } = await supabase.auth.updateUser({ email });
+
+	if (error) throw error;
+	return data;
+}
+
+export async function updateUserPassword(password: string) {
+	const supabase = createClient();
+	const { data, error } = await supabase.auth.updateUser({ password });
+	if (error) throw error;
+	return data;
+}
+
+export async function logout() {
+	const supabase = createClient();
+	const { error } = await supabase.auth.signOut();
+	if (error) throw error;
+	return true;
+}

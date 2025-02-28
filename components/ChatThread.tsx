@@ -1,9 +1,10 @@
-import { Box, Button, Flex, ScrollArea, Text, TextField } from "@radix-ui/themes";
+import { Box, Button, Flex, ScrollArea, Text, TextArea } from "@radix-ui/themes";
 import { IconSend } from "@tabler/icons-react";
 import { type Message, type Thread, type Persona } from "@/lib/supabase";
 import { useState, useRef, useEffect } from "react";
 import MessageBubble from "./MessageBubble";
 import { subscribeToMessages } from "@/utils/supabase/realtime";
+import { useAutoResizeTextArea } from "@/hooks/useAutoResizeTextArea";
 
 type ChatThreadProps = {
 	thread: Thread;
@@ -17,8 +18,10 @@ export default function ChatThread({ thread, persona, messages, onNewMessage }: 
 	const [error, setError] = useState<string>();
 	const [sending, setSending] = useState(false);
 	const scrollAreaRef = useRef<HTMLDivElement>(null);
-	const inputRef = useRef<HTMLInputElement>(null);
+	const inputRef = useRef<HTMLTextAreaElement>(null);
 	const lastMessageRef = useRef<Message | null>(null);
+
+	const { handleTextAreaInput, textAreaStyles } = useAutoResizeTextArea();
 
 	useEffect(() => {
 		// Scroll to bottom when messages change
@@ -33,7 +36,12 @@ export default function ChatThread({ thread, persona, messages, onNewMessage }: 
 			inputRef.current?.focus();
 			lastMessageRef.current = lastMessage;
 		}
-	}, [messages]);
+
+		// Reset text area size to original using handleTextAreaInput
+		if (inputRef.current) {
+			handleTextAreaInput({ target: inputRef.current } as React.ChangeEvent<HTMLTextAreaElement>);
+		}
+	}, [messages, handleTextAreaInput]);
 
 	// Subscribe to real-time message updates
 	useEffect(() => {
@@ -142,14 +150,17 @@ export default function ChatThread({ thread, persona, messages, onNewMessage }: 
 
 			<Box p="4" style={{ borderTop: "1px solid var(--gray-6)" }}>
 				<Flex gap="2">
-					<TextField.Root
+					<TextArea
 						className="flex-1"
 						placeholder="Type your message..."
 						value={newMessage}
-						onChange={(e) => setNewMessage(e.target.value)}
+						onChange={(e) => {
+							setNewMessage(handleTextAreaInput(e));
+						}}
 						onKeyDown={handleKeyPress}
 						disabled={sending}
 						ref={inputRef}
+						style={textAreaStyles}
 					/>
 					<Button onClick={handleSend} disabled={sending || !newMessage.trim()}>
 						<IconSend size={16} />

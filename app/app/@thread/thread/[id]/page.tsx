@@ -75,7 +75,7 @@ export default function ThreadPage({ params }: { params: Promise<{ id: string }>
 	}
 
 	return (
-		<Flex direction="column" className="h-full">
+		<Flex direction="column" className="h-full" width={"100%"}>
 			<Flex px="4" py="3" align="center" style={{ borderBottom: "1px solid var(--gray-6)", height: "var(--space-9)" }}>
 				<Heading size="3">{thread.title || `Chat with ${persona.name}`}</Heading>
 			</Flex>

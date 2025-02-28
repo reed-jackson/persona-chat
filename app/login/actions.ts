@@ -18,7 +18,7 @@ export async function login(formData: FormData) {
 		redirect("/error");
 	}
 
-	redirect("/");
+	redirect("/app");
 }
 
 export async function signup(formData: FormData) {

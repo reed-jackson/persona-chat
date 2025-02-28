@@ -1,4 +1,4 @@
-import { Button, Dialog, Flex, Text, TextArea } from "@radix-ui/themes";
+import { Button, CheckboxCards, Dialog, Flex, Text, TextArea } from "@radix-ui/themes";
 import { type Persona } from "@/lib/supabase";
 import { useState } from "react";
 import { IconSend } from "@tabler/icons-react";
@@ -57,25 +57,22 @@ export default function BulkMessage({ personas, onSendMessages, open, onOpenChan
 				)}
 
 				<Flex direction="column" gap="3">
-					<div className="border rounded-lg p-2 max-h-48 overflow-y-auto">
+					<CheckboxCards.Root
+						value={selectedPersonaIds}
+						onValueChange={setSelectedPersonaIds}
+						columns={{ initial: "1", sm: "4" }}
+						gap="1"
+					>
 						{personas.map((persona) => (
-							<label key={persona.id} className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
-								<input
-									type="checkbox"
-									checked={selectedPersonaIds.includes(persona.id)}
-									onChange={(e) => {
-										if (e.target.checked) {
-											setSelectedPersonaIds([...selectedPersonaIds, persona.id]);
-										} else {
-											setSelectedPersonaIds(selectedPersonaIds.filter((id) => id !== persona.id));
-										}
-									}}
-									className="h-4 w-4"
-								/>
-								<Text>{persona.name}</Text>
-							</label>
+							<CheckboxCards.Item key={persona.id} value={persona.id}>
+								<Flex direction="column" width="100%">
+									<Text weight="bold" size="2">
+										{persona.name}
+									</Text>
+								</Flex>
+							</CheckboxCards.Item>
 						))}
-					</div>
+					</CheckboxCards.Root>
 
 					<TextArea
 						placeholder="Type your message..."
