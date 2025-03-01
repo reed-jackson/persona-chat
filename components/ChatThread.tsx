@@ -13,7 +13,7 @@ type ChatThreadProps = {
 	onNewMessage?: (message: Message) => void;
 };
 
-export default function ChatThread({ thread, persona, messages, onNewMessage }: ChatThreadProps) {
+export default function ChatThread({ thread, messages, onNewMessage }: ChatThreadProps) {
 	const [newMessage, setNewMessage] = useState("");
 	const [error, setError] = useState<string>();
 	const [sending, setSending] = useState(false);
@@ -93,33 +93,17 @@ export default function ChatThread({ thread, persona, messages, onNewMessage }: 
 	};
 
 	return (
-		<Flex direction="column" className="h-full">
-			<Box p="4" style={{ display: "none", borderBottom: "1px solid var(--gray-6)" }}>
-				<Flex justify="between" align="center">
-					<Box>
-						<Box>
-							<Flex align="baseline" gap="2">
-								<Box>
-									<Text size="5" weight="bold">
-										{persona.name}
-									</Text>
-								</Box>
-								<Box>
-									<Text size="2" color="gray">
-										{thread.title}
-									</Text>
-								</Box>
-							</Flex>
-						</Box>
-						<Text size="2" color="gray">
-							{persona.experience}
-						</Text>
-					</Box>
-				</Flex>
-			</Box>
-
+		<Flex direction="column" className="h-full" position="relative">
 			{error && (
-				<Box px="4" py="2">
+				<Box
+					px="4"
+					py="2"
+					position="absolute"
+					top="0"
+					left="0"
+					right="0"
+					style={{ zIndex: 1000, backgroundColor: "var(--red-3)" }}
+				>
 					<Text color="red" size="2">
 						{error}
 					</Text>

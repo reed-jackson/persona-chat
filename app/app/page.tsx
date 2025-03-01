@@ -2,7 +2,7 @@
 
 import PersonaList from "@/components/PersonaList";
 import PersonaThreads from "@/components/PersonaThreads";
-import { Box, Dialog, Flex, Heading, IconButton, Text, VisuallyHidden } from "@radix-ui/themes";
+import { Box, Dialog, Flex, IconButton, Text, VisuallyHidden } from "@radix-ui/themes";
 import { useEffect, useState } from "react";
 import {
 	type Persona,
@@ -116,11 +116,12 @@ export default function AppPage() {
 	return (
 		<Flex className="h-full">
 			{/* Left sidebar with personas */}
-			<Box className="w-[320px] h-full" style={{ borderRight: "1px solid var(--gray-6)" }}>
+			<Box display={{ initial: "none", md: "block" }} width={"320px"} style={{ borderRight: "1px solid var(--gray-6)" }}>
 				<Flex direction="column" className="h-full">
 					<Box px="4" py="3" style={{ borderBottom: "1px solid var(--gray-6)", height: "var(--space-9)" }}>
 						<Flex justify="between" align="center" height="100%">
-							<Heading size="4">Personas</Heading>
+							<img src="/personachat.svg" alt="logo" width={109} height={40} />
+
 							<Flex gap="2" align="center">
 								<Dialog.Root open={isBulkMessageOpen} onOpenChange={setIsBulkMessageOpen}>
 									<Dialog.Trigger>
@@ -175,7 +176,7 @@ export default function AppPage() {
 
 			{/* Middle panel with threads */}
 			{selectedPersona && (
-				<Box className="w-[280px] h-full" style={{ borderRight: "1px solid var(--gray-6)" }}>
+				<Box display={{ initial: "none", md: "block" }} width="280px" style={{ borderRight: "1px solid var(--gray-6)" }}>
 					<PersonaThreads
 						persona={selectedPersona}
 						threads={threads}

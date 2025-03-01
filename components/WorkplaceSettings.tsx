@@ -6,6 +6,7 @@ import { Button, TextField, Select, Text, Dialog, TextArea, Tabs } from "@radix-
 import { Flex, Box } from "@radix-ui/themes";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
+import { useTheme } from "next-themes";
 
 type WorkplaceContext = Database["public"]["Tables"]["workplace_context"]["Row"];
 type WorkplaceContextInput = Omit<WorkplaceContext, "id" | "user_id" | "created_at" | "updated_at">;
@@ -34,6 +35,7 @@ export default function WorkplaceSettings({ initialData, onSave }: WorkplaceSett
 	const [currentEmail, setCurrentEmail] = useState<string>("");
 	const [error, setError] = useState<string>("");
 	const router = useRouter();
+	const { theme, setTheme } = useTheme();
 
 	// Fetch current user's email when dialog opens
 	const fetchUserEmail = async () => {
@@ -133,7 +135,7 @@ export default function WorkplaceSettings({ initialData, onSave }: WorkplaceSett
 			<Dialog.Trigger>
 				<Button variant="ghost" size="2">
 					<IconSettings width="16" height="16" />
-					Settings
+					<Box display={{ initial: "none", md: "block" }}>Settings</Box>
 				</Button>
 			</Dialog.Trigger>
 			<Dialog.Content>
@@ -142,6 +144,7 @@ export default function WorkplaceSettings({ initialData, onSave }: WorkplaceSett
 					<Tabs.List>
 						<Tabs.Trigger value="workplace">Workplace Context</Tabs.Trigger>
 						<Tabs.Trigger value="profile">Profile</Tabs.Trigger>
+						<Tabs.Trigger value="appearance">Appearance</Tabs.Trigger>
 					</Tabs.List>
 
 					<Box mt="4">
@@ -276,6 +279,24 @@ export default function WorkplaceSettings({ initialData, onSave }: WorkplaceSett
 							<Button mt={"6"} type="button" variant="ghost" color="red" onClick={handleLogout} disabled={loading}>
 								{loading ? "Logging out..." : "Log out"}
 							</Button>
+						</Tabs.Content>
+
+						<Tabs.Content value="appearance">
+							<Flex direction="column" gap="3">
+								<Box>
+									<Text as="label" size="2" mb="1" weight="medium">
+										Theme
+									</Text>
+									<Select.Root value={theme} onValueChange={setTheme}>
+										<Select.Trigger />
+										<Select.Content>
+											<Select.Item value="system">System</Select.Item>
+											<Select.Item value="light">Light</Select.Item>
+											<Select.Item value="dark">Dark</Select.Item>
+										</Select.Content>
+									</Select.Root>
+								</Box>
+							</Flex>
 						</Tabs.Content>
 					</Box>
 				</Tabs.Root>

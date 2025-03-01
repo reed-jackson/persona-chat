@@ -2,6 +2,7 @@ import { Avatar, Box, Flex, IconButton, ScrollArea, Text, Dialog, TextField, But
 import { IconMessagePlus, IconEdit } from "@tabler/icons-react";
 import { type Thread, type Persona, createThread, updateThread } from "@/lib/supabase";
 import { useState } from "react";
+import { formatDistanceToNow } from "date-fns";
 
 type PersonaThreadsProps = {
 	persona: Persona;
@@ -87,12 +88,12 @@ export default function PersonaThreads({
 									gap="2"
 								>
 									<Flex justify="between" align="center">
-										<Box onClick={() => onSelectThread(thread)}>
+										<Flex direction="column" onClick={() => onSelectThread(thread)}>
 											<Text weight="medium">{thread.title}</Text>
 											<Text size="2" color="gray">
-												{new Date(thread.created_at).toLocaleDateString()}
+												{formatDistanceToNow(new Date(thread.created_at), { addSuffix: true })}
 											</Text>
-										</Box>
+										</Flex>
 										<Dialog.Root
 											open={editingThread?.id === thread.id}
 											onOpenChange={(open) => {

@@ -204,6 +204,7 @@ export default function PersonaForm({ persona, onSuccess, onCancel }: PersonaFor
 									placeholder="What challenges do they face?"
 									value={formData.pain_points}
 									onChange={handleInputChange}
+									rows={6}
 									required
 								/>
 							</div>
@@ -218,6 +219,7 @@ export default function PersonaForm({ persona, onSuccess, onCancel }: PersonaFor
 									placeholder="What do they value most?"
 									value={formData.values}
 									onChange={handleInputChange}
+									rows={6}
 									required
 								/>
 							</div>
@@ -239,24 +241,20 @@ export default function PersonaForm({ persona, onSuccess, onCancel }: PersonaFor
 				</Tabs.Content>
 
 				<Tabs.Content value="prompt">
-					<form onSubmit={handlePromptSubmit} className="mt-4">
-						<Flex direction="column" gap="4">
+					<form onSubmit={handlePromptSubmit}>
+						<Flex direction="column" gap="4" mt={"4"}>
 							<Flex justify="between" align="center">
-								<Heading size="2">System Prompt</Heading>
 								<Button
 									type="button"
 									variant="soft"
 									onClick={generateSystemPrompt}
 									disabled={isGenerating || !isInfoComplete()}
 								>
-									<IconRefresh className={isGenerating ? "animate-spin" : ""} />
+									<IconRefresh size={16} className={isGenerating ? "animate-spin" : ""} />
 									{isGenerating ? "Generating..." : "Generate"}
 								</Button>
 							</Flex>
 							<div>
-								<label htmlFor="system_prompt" className="text-sm font-medium mb-1.5 block">
-									AI Behavior Instructions
-								</label>
 								<TextArea
 									id="system_prompt"
 									name="system_prompt"

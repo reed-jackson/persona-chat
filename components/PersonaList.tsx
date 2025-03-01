@@ -1,5 +1,5 @@
-import { Avatar, Box, Button, Flex, ScrollArea, Text } from "@radix-ui/themes";
-import { IconEdit, IconTrash } from "@tabler/icons-react";
+import { Avatar, Box, DropdownMenu, Flex, IconButton, ScrollArea, Text, Tooltip } from "@radix-ui/themes";
+import { IconEdit, IconTrash, IconDotsVertical } from "@tabler/icons-react";
 import { type Persona, type WorkplaceContext } from "@/lib/supabase";
 import { deletePersona } from "@/lib/supabase";
 import { useState } from "react";
@@ -50,59 +50,70 @@ export default function PersonaList({
 
 			<ScrollArea type="hover" scrollbars="vertical" className="flex-1">
 				<Box p="2">
-					<Flex direction="column" gap="1">
+					<Flex direction="column" align={{ initial: "center", md: "stretch" }} gap="1">
 						{personas.length === 0 ? (
 							<Box p="2">
 								<Text color="gray">No personas created yet</Text>
 							</Box>
 						) : (
 							personas.map((persona) => (
-								<Box
-									key={persona.id}
-									className={`cursor-pointer transition-colors rounded-lg`}
-									style={{
-										color: selectedPersonaId === persona.id ? "var(--blue-10)" : undefined,
-									}}
-									onClick={() => onSelectPersona?.(persona)}
-								>
-									<Flex gap="3" p="3" align="center">
-										<Avatar size="4" fallback={persona.name[0]} color="blue" className="cursor-pointer" radius="full" />
+								<Tooltip key={persona.id} content={persona.name} side="right">
+									<Box
+										className={`cursor-pointer transition-colors rounded-lg`}
+										style={{
+											color: selectedPersonaId === persona.id ? "var(--blue-10)" : undefined,
+										}}
+										onClick={() => onSelectPersona?.(persona)}
+									>
+										<Flex gap="3" p="3" align="center">
+											<Avatar size="4" fallback={persona.name[0]} color="blue" className="cursor-pointer" radius="full" />
 
-										<Box className="flex-1 min-w-0">
-											<Flex justify="between" align="center">
-												<Text weight="medium" className="truncate">
-													{persona.name}
-												</Text>
-												<Flex gap="1">
-													<Button
-														variant="ghost"
-														size="1"
-														onClick={(e) => {
-															e.stopPropagation();
-															onEditPersona?.(persona);
-														}}
-													>
-														<IconEdit size={16} />
-													</Button>
-													<Button
-														variant="ghost"
-														color="red"
-														size="1"
-														onClick={(e) => {
-															e.stopPropagation();
-															handleDelete(persona.id);
-														}}
-													>
-														<IconTrash size={16} />
-													</Button>
+											<Box className="flex-1 min-w-0" display={{ initial: "none", md: "block" }}>
+												<Flex justify="between" align="center">
+													<Text weight="medium" className="truncate">
+														{persona.name}
+													</Text>
+													<Flex gap="2">
+														<DropdownMenu.Root>
+															<DropdownMenu.Trigger>
+																<IconButton variant="ghost" size="1">
+																	<IconDotsVertical size={16} />
+																</IconButton>
+															</DropdownMenu.Trigger>
+
+															<DropdownMenu.Content align="end" className="min-w-[140px]">
+																<DropdownMenu.Item
+																	className="flex items-center gap-2 cursor-pointer"
+																	onClick={(e) => {
+																		e.stopPropagation();
+																		onEditPersona?.(persona);
+																	}}
+																>
+																	<IconEdit size={16} />
+																	Edit
+																</DropdownMenu.Item>
+
+																<DropdownMenu.Item
+																	className="flex items-center gap-2 cursor-pointer text-red-500"
+																	onClick={(e) => {
+																		e.stopPropagation();
+																		handleDelete(persona.id);
+																	}}
+																>
+																	<IconTrash size={16} />
+																	Delete
+																</DropdownMenu.Item>
+															</DropdownMenu.Content>
+														</DropdownMenu.Root>
+													</Flex>
 												</Flex>
-											</Flex>
-											<Text size="2" color="gray" className="truncate">
-												Age: {persona.age} • {persona.experience.split(" ").slice(0, 3).join(" ")}...
-											</Text>
-										</Box>
-									</Flex>
-								</Box>
+												<Text size="2" color="gray" className="truncate">
+													Age: {persona.age} • {persona.experience.split(" ").slice(0, 3).join(" ")}...
+												</Text>
+											</Box>
+										</Flex>
+									</Box>
+								</Tooltip>
 							))
 						)}
 					</Flex>
