@@ -135,7 +135,7 @@ export default function WorkplaceSettings({ initialData, onSave }: WorkplaceSett
 			<Dialog.Trigger>
 				<Button variant="ghost" size="2">
 					<IconSettings width="16" height="16" />
-					<Box display={{ initial: "none", md: "block" }}>Settings</Box>
+					Settings
 				</Button>
 			</Dialog.Trigger>
 			<Dialog.Content>

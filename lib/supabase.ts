@@ -203,8 +203,19 @@ export async function saveWorkplaceContext(context: WorkplaceContextInput) {
 
 		return data as WorkplaceContext;
 	} else {
+		const {
+			data: { user },
+		} = await supabase.auth.getUser();
+
+		if (!user) throw new Error("User not authenticated");
+
+		const contextWithUserId = {
+			...context,
+			user_id: user.id,
+		};
+
 		// Insert new record
-		const { data, error } = await supabase.from("workplace_context").insert(context).select().single();
+		const { data, error } = await supabase.from("workplace_context").insert(contextWithUserId).select().single();
 
 		if (error) {
 			console.error("Error inserting workplace context:", error);

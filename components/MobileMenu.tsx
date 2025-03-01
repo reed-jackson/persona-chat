@@ -1,9 +1,11 @@
-import { Avatar, Box, Flex, IconButton, Popover, ScrollArea, Text } from "@radix-ui/themes";
+import { Avatar, Box, Dialog, Flex, IconButton, Popover, ScrollArea, Text, VisuallyHidden } from "@radix-ui/themes";
 import { IconArrowBarRight, IconMenu2, IconMessagePlus, IconUserPlus } from "@tabler/icons-react";
-import { useState } from "react";
-import { type Persona, type Thread } from "@/lib/supabase";
+import { useEffect, useState } from "react";
+import { getPersonas, type Persona, type Thread } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
+import WorkplaceSettings from "./WorkplaceSettings";
+import PersonaForm from "./PersonaForm";
 
 type MobileMenuProps = {
 	personas: Persona[];
@@ -14,9 +16,20 @@ type MobileMenuProps = {
 	onNewThread: (persona: Persona) => void;
 };
 
-export default function MobileMenu({ personas, threads, onSelectPersona, onNewPersona, onNewThread }: MobileMenuProps) {
+export default function MobileMenu({ threads, onSelectPersona, onNewThread }: MobileMenuProps) {
 	const [selectedPersona, setSelectedPersona] = useState<Persona | null>(null);
+	const [personas, setPersonas] = useState<Persona[]>([]);
+	const [isNewPersonaOpen, setIsNewPersonaOpen] = useState(false);
 	const router = useRouter();
+
+	const loadPersonas = async () => {
+		const data = await getPersonas();
+		setPersonas(data);
+	};
+
+	useEffect(() => {
+		loadPersonas();
+	}, []);
 
 	const handlePersonaSelect = (persona: Persona) => {
 		setSelectedPersona(persona);
@@ -25,6 +38,12 @@ export default function MobileMenu({ personas, threads, onSelectPersona, onNewPe
 
 	const handleThreadSelect = (thread: Thread) => {
 		router.push(`/app/thread/${thread.id}`);
+	};
+
+	const handlePersonaCreate = (newPersona: Persona) => {
+		setPersonas((prev) => [newPersona, ...prev]);
+		setSelectedPersona(newPersona);
+		setIsNewPersonaOpen(false);
 	};
 
 	return (
@@ -41,9 +60,19 @@ export default function MobileMenu({ personas, threads, onSelectPersona, onNewPe
 							{selectedPersona?.name || "Personas"}
 						</Text>
 						{!selectedPersona ? (
-							<IconButton variant="soft" onClick={onNewPersona}>
-								<IconUserPlus size={16} />
-							</IconButton>
+							<Dialog.Root open={isNewPersonaOpen} onOpenChange={setIsNewPersonaOpen}>
+								<Dialog.Trigger>
+									<IconButton variant="soft" size="2">
+										<IconUserPlus size={16} />
+									</IconButton>
+								</Dialog.Trigger>
+								<Dialog.Content>
+									<VisuallyHidden>
+										<Dialog.Title>Create Persona</Dialog.Title>
+									</VisuallyHidden>
+									<PersonaForm onSuccess={handlePersonaCreate} onCancel={() => setIsNewPersonaOpen(false)} />
+								</Dialog.Content>
+							</Dialog.Root>
 						) : (
 							<IconButton variant="soft" onClick={() => onNewThread(selectedPersona)}>
 								<IconMessagePlus size={16} />
@@ -117,6 +146,7 @@ export default function MobileMenu({ personas, threads, onSelectPersona, onNewPe
 							</Box>
 						)}
 					</Flex>
+					<WorkplaceSettings />
 				</Flex>
 			</Popover.Content>
 		</Popover.Root>
