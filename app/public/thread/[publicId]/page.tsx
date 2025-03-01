@@ -4,7 +4,8 @@ import MessageBubble from "@/components/MessageBubble";
 import { createClient } from "@/utils/supabase/server";
 import { type Message } from "@/lib/supabase";
 
-export default async function PublicThreadPage({ params: { publicId } }: { params: { publicId: string } }) {
+export default async function PublicThreadPage({ params }: { params: Promise<{ publicId: string }> }) {
+	const { publicId } = await params;
 	const supabase = await createClient();
 
 	// Fetch public thread
