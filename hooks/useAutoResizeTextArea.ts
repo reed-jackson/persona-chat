@@ -5,7 +5,7 @@ interface UseAutoResizeTextAreaOptions {
 	minHeight?: number;
 }
 
-export function useAutoResizeTextArea({ maxHeight = 200, minHeight = 32 }: UseAutoResizeTextAreaOptions = {}) {
+export function useAutoResizeTextArea({ maxHeight = 200, minHeight = 56 }: UseAutoResizeTextAreaOptions = {}) {
 	const handleTextAreaInput = useCallback(
 		(e: React.ChangeEvent<HTMLTextAreaElement>) => {
 			const textarea = e.target;
@@ -27,6 +27,7 @@ export function useAutoResizeTextArea({ maxHeight = 200, minHeight = 32 }: UseAu
 		resize: "none" as const,
 		overflow: "hidden",
 		transition: "height 0.2s ease",
+		flexGrow: 1,
 	};
 
 	return { handleTextAreaInput, textAreaStyles };

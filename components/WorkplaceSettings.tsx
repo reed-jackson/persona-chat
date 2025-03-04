@@ -163,7 +163,7 @@ export default function WorkplaceSettings({ initialData, onSave }: WorkplaceSett
 										</Text>
 										<TextField.Root
 											name="company_name"
-											defaultValue={initialData?.company_name}
+											defaultValue={initialData?.company_name || ""}
 											placeholder="Acme Corp"
 											required
 										/>
@@ -175,7 +175,7 @@ export default function WorkplaceSettings({ initialData, onSave }: WorkplaceSett
 										</Text>
 										<TextField.Root
 											name="product_name"
-											defaultValue={initialData?.product_name}
+											defaultValue={initialData?.product_name || ""}
 											placeholder="GrowthHub"
 											required
 										/>
@@ -187,7 +187,7 @@ export default function WorkplaceSettings({ initialData, onSave }: WorkplaceSett
 										</Text>
 										<TextArea
 											name="description"
-											defaultValue={initialData?.description}
+											defaultValue={initialData?.description || ""}
 											placeholder="A SaaS tool for product growth teams..."
 											required
 											size="3"
@@ -216,7 +216,7 @@ export default function WorkplaceSettings({ initialData, onSave }: WorkplaceSett
 										</Text>
 										<TextArea
 											name="target_audience"
-											defaultValue={initialData?.target_audience}
+											defaultValue={initialData?.target_audience || ""}
 											placeholder="Product managers and growth marketers"
 											required
 											size="3"

@@ -41,6 +41,69 @@ export type Database = {
           },
         ]
       }
+      persona_group_members: {
+        Row: {
+          created_at: string
+          group_id: string
+          id: string
+          persona_id: string
+        }
+        Insert: {
+          created_at?: string
+          group_id: string
+          id?: string
+          persona_id: string
+        }
+        Update: {
+          created_at?: string
+          group_id?: string
+          id?: string
+          persona_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "persona_group_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "persona_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "persona_group_members_persona_id_fkey"
+            columns: ["persona_id"]
+            isOneToOne: false
+            referencedRelation: "personas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      persona_groups: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       personas: {
         Row: {
           age: number
@@ -86,11 +149,53 @@ export type Database = {
         }
         Relationships: []
       }
+      public_threads: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          messages: Json
+          persona_details: Json
+          thread_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          messages: Json
+          persona_details: Json
+          thread_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          messages?: Json
+          persona_details?: Json
+          thread_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "public_threads_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       threads: {
         Row: {
           created_at: string
           id: string
           persona_id: string
+          public_id: string | null
           title: string
           user_id: string
         }
@@ -98,6 +203,7 @@ export type Database = {
           created_at?: string
           id?: string
           persona_id: string
+          public_id?: string | null
           title: string
           user_id: string
         }
@@ -105,6 +211,7 @@ export type Database = {
           created_at?: string
           id?: string
           persona_id?: string
+          public_id?: string | null
           title?: string
           user_id?: string
         }
@@ -120,35 +227,35 @@ export type Database = {
       }
       workplace_context: {
         Row: {
-          company_name: string
+          company_name: string | null
           created_at: string
-          description: string
+          description: string | null
           id: string
-          industry: string
-          product_name: string
-          target_audience: string
+          industry: string | null
+          product_name: string | null
+          target_audience: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
-          company_name: string
+          company_name?: string | null
           created_at?: string
-          description: string
+          description?: string | null
           id?: string
-          industry: string
-          product_name: string
-          target_audience: string
+          industry?: string | null
+          product_name?: string | null
+          target_audience?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
-          company_name?: string
+          company_name?: string | null
           created_at?: string
-          description?: string
+          description?: string | null
           id?: string
-          industry?: string
-          product_name?: string
-          target_audience?: string
+          industry?: string | null
+          product_name?: string | null
+          target_audience?: string | null
           updated_at?: string
           user_id?: string
         }

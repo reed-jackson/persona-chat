@@ -4,7 +4,7 @@ import ChatThread from "@/components/ChatThread";
 import { Box, Button, Dialog, Flex, Heading, IconButton, Text, TextField } from "@radix-ui/themes";
 import { IconCopy, IconShare } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
-import { type Message, type Thread, type Persona, getMessages, getThreads, getPersonas } from "@/lib/supabase";
+import { type Message, type Thread, type Persona, getMessages, getThread } from "@/lib/supabase";
 import { createClient } from "@/utils/supabase/client";
 
 type PublicThread = {
@@ -41,29 +41,22 @@ export default function ThreadPage({ params }: { params: Promise<{ id: string }>
 			try {
 				const id = (await params).id;
 
-				// Get all personas first to find the persona ID
-				const allPersonas = await getPersonas();
-
-				// Get all threads for all personas and find the one we want
-				const allThreads = await Promise.all(allPersonas.map((p) => getThreads(p.id))).then((threadArrays) =>
-					threadArrays.flat()
-				);
-
-				const threadData = allThreads.find((t) => t.id === id);
+				// Get thread with persona/group data
+				const threadData = await getThread(id);
 				if (!threadData) {
 					throw new Error("Thread not found");
 				}
+				console.log("threadData: ", threadData);
 				setThread(threadData);
 
-				const personaData = allPersonas.find((p) => p.id === threadData.persona_id);
-				if (!personaData) {
-					throw new Error("Persona not found");
+				// Set persona if this is a persona thread
+				if (threadData.personas) {
+					setPersona(threadData.personas);
 				}
 
+				// Get messages
 				const messagesData = await getMessages(id);
-
 				setMessages(messagesData);
-				setPersona(personaData);
 			} catch (err) {
 				setError(err instanceof Error ? err.message : "Failed to load thread");
 			} finally {
@@ -203,13 +196,17 @@ export default function ThreadPage({ params }: { params: Promise<{ id: string }>
 		);
 	}
 
-	if (loading || !thread || !persona) {
+	if (loading || !thread) {
 		return (
 			<Flex align="center" justify="center" flexGrow="1" className="h-full">
 				<p>Loading thread...</p>
 			</Flex>
 		);
 	}
+
+	// Determine if this is a group thread or persona thread
+	const isGroupThread = !!thread.persona_groups;
+	const group = thread.persona_groups;
 
 	return (
 		<Flex direction="column" className="h-full" width={"100%"}>
@@ -221,14 +218,16 @@ export default function ThreadPage({ params }: { params: Promise<{ id: string }>
 				style={{ borderBottom: "1px solid var(--gray-6)", height: "var(--space-9)" }}
 			>
 				<Box ml={{ initial: "8", md: "0" }}>
-					<Heading size="3">{thread.title || `Chat with ${persona.name}`}</Heading>
+					<Heading size="3">
+						{thread.title || (isGroupThread ? `Group: ${group?.name}` : `Chat with ${persona?.name}`)}
+					</Heading>
 				</Box>
 				<IconButton onClick={handleShare} variant="ghost">
 					<IconShare size={16} />
 				</IconButton>
 			</Flex>
 			<Box className="flex-1 min-h-0 overflow-y-auto">
-				<ChatThread thread={thread} persona={persona} messages={messages} onNewMessage={handleNewMessage} />
+				<ChatThread thread={thread} persona={persona} group={group} messages={messages} onNewMessage={handleNewMessage} />
 			</Box>
 
 			<Dialog.Root open={shareDialogOpen} onOpenChange={setShareDialogOpen}>

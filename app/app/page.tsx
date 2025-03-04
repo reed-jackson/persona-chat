@@ -5,12 +5,15 @@ import PersonaThreads from "@/components/PersonaThreads";
 import { Box, Dialog, Flex, IconButton, Text, VisuallyHidden } from "@radix-ui/themes";
 import { useEffect, useState } from "react";
 import {
-	type Persona,
-	type Thread,
+	Persona,
+	Thread,
 	getPersonas,
-	getThreads,
-	getWorkplaceContext,
+	getPersonaGroups,
 	WorkplaceContext,
+	getPersonaThreads,
+	getGroupThreads,
+	PersonaGroupWithMembers,
+	getWorkplaceContext,
 } from "@/lib/supabase";
 import { IconMessageBolt, IconUserPlus } from "@tabler/icons-react";
 import PersonaForm from "@/components/PersonaForm";
@@ -21,7 +24,9 @@ export default function AppPage() {
 	const params = useParams();
 	const threadId = typeof params?.id === "string" ? params.id : undefined;
 	const [selectedPersona, setSelectedPersona] = useState<Persona>();
+	const [selectedGroup, setSelectedGroup] = useState<PersonaGroupWithMembers>();
 	const [personas, setPersonas] = useState<Persona[]>([]);
+	const [groups, setGroups] = useState<PersonaGroupWithMembers[]>([]);
 	const [threads, setThreads] = useState<Thread[]>([]);
 	const [isNewPersonaOpen, setIsNewPersonaOpen] = useState(false);
 	const [isBulkMessageOpen, setIsBulkMessageOpen] = useState(false);
@@ -31,9 +36,10 @@ export default function AppPage() {
 	const [workplaceContext, setWorkplaceContext] = useState<WorkplaceContext>();
 	const router = useRouter();
 
-	// Load personas and workplace context on mount
+	// Load personas, groups, and workplace context on mount
 	useEffect(() => {
 		loadPersonas();
+		loadGroups();
 		loadWorkplaceContext();
 	}, []);
 
@@ -41,10 +47,20 @@ export default function AppPage() {
 	useEffect(() => {
 		if (selectedPersona) {
 			loadThreads(selectedPersona.id);
+			setSelectedGroup(undefined);
 		} else {
 			setThreads([]);
 		}
 	}, [selectedPersona]);
+
+	// Load threads when group is selected
+	useEffect(() => {
+		if (selectedGroup) {
+			// Load threads for the group
+			loadGroupThreads(selectedGroup.id);
+			setSelectedPersona(undefined);
+		}
+	}, [selectedGroup]);
 
 	const loadPersonas = async () => {
 		try {
@@ -57,12 +73,30 @@ export default function AppPage() {
 		}
 	};
 
+	const loadGroups = async () => {
+		try {
+			const data = await getPersonaGroups();
+			setGroups(data);
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Failed to load groups");
+		}
+	};
+
 	const loadThreads = async (personaId: string) => {
 		try {
-			const data = await getThreads(personaId);
+			const data = await getPersonaThreads(personaId);
 			setThreads(data);
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Failed to load threads");
+		}
+	};
+
+	const loadGroupThreads = async (groupId: string) => {
+		try {
+			const data = await getGroupThreads(groupId);
+			setThreads(data);
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Failed to load group threads");
 		}
 	};
 
@@ -91,6 +125,24 @@ export default function AppPage() {
 		setPersonas((prev) => prev.filter((p) => p.id !== deletedId));
 		if (selectedPersona?.id === deletedId) {
 			setSelectedPersona(undefined);
+			router.push("/app");
+		}
+	};
+
+	const handleGroupCreate = (newGroup: PersonaGroupWithMembers) => {
+		setGroups((prev) => [newGroup, ...prev]);
+		setSelectedGroup(newGroup);
+	};
+
+	const handleGroupUpdate = (updatedGroup: PersonaGroupWithMembers) => {
+		setGroups((prev) => prev.map((g) => (g.id === updatedGroup.id ? updatedGroup : g)));
+		setSelectedGroup(updatedGroup);
+	};
+
+	const handleGroupDelete = (deletedId: string) => {
+		setGroups((prev) => prev.filter((g) => g.id !== deletedId));
+		if (selectedGroup?.id === deletedId) {
+			setSelectedGroup(undefined);
 			router.push("/app");
 		}
 	};
@@ -162,10 +214,16 @@ export default function AppPage() {
 						) : (
 							<PersonaList
 								personas={personas}
+								groups={groups}
 								selectedPersonaId={selectedPersona?.id}
+								selectedGroupId={selectedGroup?.id}
 								onSelectPersona={setSelectedPersona}
+								onSelectGroup={setSelectedGroup}
 								onEditPersona={setEditingPersona}
 								onDeletePersona={handlePersonaDelete}
+								onGroupCreate={handleGroupCreate}
+								onGroupUpdate={handleGroupUpdate}
+								onGroupDelete={handleGroupDelete}
 								workplaceContext={workplaceContext}
 								onWorkplaceContextSave={handleWorkplaceContextSave}
 							/>
@@ -175,10 +233,11 @@ export default function AppPage() {
 			</Box>
 
 			{/* Middle panel with threads */}
-			{selectedPersona && (
+			{(selectedPersona || selectedGroup) && (
 				<Box display={{ initial: "none", md: "block" }} width="280px" style={{ borderRight: "1px solid var(--gray-6)" }}>
 					<PersonaThreads
 						persona={selectedPersona}
+						group={selectedGroup}
 						threads={threads}
 						onNewThread={handleNewThread}
 						onSelectThread={(thread) => router.push(`/app/thread/${thread.id}`)}

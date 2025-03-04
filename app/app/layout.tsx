@@ -4,7 +4,7 @@ import "@radix-ui/themes/styles.css";
 import { Box, Flex } from "@radix-ui/themes";
 import MobileMenu from "@/components/MobileMenu";
 import { useEffect, useState } from "react";
-import { type Persona, type Thread, getPersonas, getThreads, createThread } from "@/lib/supabase";
+import { type Persona, type Thread, getPersonas, getPersonaThreads, createThread } from "@/lib/supabase";
 
 export default function AppLayout({ children, thread }: { children: React.ReactNode; thread: React.ReactNode }) {
 	const [personas, setPersonas] = useState<Persona[]>([]);
@@ -32,7 +32,7 @@ export default function AppLayout({ children, thread }: { children: React.ReactN
 
 	const loadThreads = async (personaId: string) => {
 		try {
-			const data = await getThreads(personaId);
+			const data = await getPersonaThreads(personaId);
 			setThreads(data);
 		} catch (err) {
 			console.error("Failed to load threads:", err);
