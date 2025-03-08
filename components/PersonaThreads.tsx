@@ -43,7 +43,7 @@ export default function PersonaThreads({
 
 	const handleNewThread = async () => {
 		try {
-			const thread = await createThread(persona.id, `Chat with ${persona.name}`);
+			const thread = await createThread(persona.id, `New Chat`);
 			onNewThread(thread);
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Failed to create thread");
