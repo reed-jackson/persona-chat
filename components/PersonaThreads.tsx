@@ -1,14 +1,17 @@
 import { Avatar, Box, Flex, IconButton, ScrollArea, Text, Dialog, TextField, Button } from "@radix-ui/themes";
 import { IconMessagePlus, IconEdit } from "@tabler/icons-react";
 import { type Thread, type Persona, createThread, updateThread } from "@/lib/supabase";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { formatDistanceToNow } from "date-fns";
+import { motion, AnimatePresence } from "framer-motion";
+import { subscribeToThreadUpdates } from "@/utils/supabase/realtime";
 
 type PersonaThreadsProps = {
 	persona: Persona;
 	threads: Thread[];
 	onSelectThread: (thread: Thread) => void;
 	onNewThread: (thread: Thread) => void;
+	onThreadUpdate?: (thread: Thread) => void;
 	selectedThreadId?: string;
 };
 
@@ -17,11 +20,26 @@ export default function PersonaThreads({
 	threads,
 	onSelectThread,
 	onNewThread,
+	onThreadUpdate,
 	selectedThreadId,
 }: PersonaThreadsProps) {
 	const [error, setError] = useState<string>();
 	const [editingThread, setEditingThread] = useState<Thread | null>(null);
 	const [newTitle, setNewTitle] = useState("");
+
+	// Subscribe to thread updates
+	useEffect(() => {
+		const unsubscribers = threads.map((thread) =>
+			subscribeToThreadUpdates(thread.id, (updatedThread) => {
+				// Notify parent of thread update
+				onThreadUpdate?.(updatedThread);
+			})
+		);
+
+		return () => {
+			unsubscribers.forEach((unsubscribe) => unsubscribe());
+		};
+	}, [threads, onThreadUpdate]);
 
 	const handleNewThread = async () => {
 		try {
@@ -36,7 +54,8 @@ export default function PersonaThreads({
 		try {
 			const updatedThread = await updateThread(thread.id, { title: newTitle });
 			setEditingThread(null);
-			// Trigger a refresh of the threads list
+			// Notify parent of thread update
+			onThreadUpdate?.(updatedThread);
 			onSelectThread(updatedThread);
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Failed to rename thread");
@@ -75,68 +94,85 @@ export default function PersonaThreads({
 								<Text color="gray">No chats yet. Start a new conversation!</Text>
 							</Box>
 						) : (
-							threads.map((thread) => (
-								<Flex
-									key={thread.id}
-									className={`cursor-pointer`}
-									style={{
-										borderBottom: "1px solid var(--gray-6)",
-										color: selectedThreadId === thread.id ? "var(--accent-10)" : undefined,
-									}}
-									p={"3"}
-									direction="column"
-									gap="2"
-								>
-									<Flex justify="between" align="center">
-										<Flex direction="column" onClick={() => onSelectThread(thread)}>
-											<Text weight="medium">{thread.title}</Text>
-											<Text size="2" color="gray">
-												{formatDistanceToNow(new Date(thread.created_at), { addSuffix: true })}
-											</Text>
-										</Flex>
-										<Dialog.Root
-											open={editingThread?.id === thread.id}
-											onOpenChange={(open) => {
-												if (!open) setEditingThread(null);
-												if (open) {
-													setEditingThread(thread);
-													setNewTitle(thread.title);
-												}
+							<AnimatePresence>
+								{threads.map((thread) => (
+									<motion.div
+										key={thread.id}
+										layout
+										initial={{ opacity: 0, y: 20 }}
+										animate={{ opacity: 1, y: 0 }}
+										exit={{ opacity: 0, y: -20 }}
+										transition={{ duration: 0.2 }}
+									>
+										<Flex
+											className={`cursor-pointer`}
+											style={{
+												borderBottom: "1px solid var(--gray-6)",
+												color: selectedThreadId === thread.id ? "var(--accent-10)" : undefined,
 											}}
+											p={"3"}
+											direction="column"
+											gap="2"
 										>
-											<Dialog.Trigger>
-												<IconButton variant="ghost" size="1">
-													<IconEdit size={16} />
-												</IconButton>
-											</Dialog.Trigger>
-											<Dialog.Content>
-												<Dialog.Title>Rename Thread</Dialog.Title>
-												<Box my="4">
-													<TextField.Root
-														value={newTitle}
-														onChange={(e) => setNewTitle(e.target.value)}
-														placeholder="Enter new title"
-													/>
-												</Box>
-												<Flex gap="3" justify="end">
-													<Dialog.Close>
-														<Button variant="soft" color="gray">
-															Cancel
-														</Button>
-													</Dialog.Close>
-													<Button
-														variant="solid"
-														onClick={() => handleRenameThread(thread)}
-														disabled={!newTitle.trim() || newTitle === thread.title}
+											<Flex justify="between" align="center">
+												<Flex direction="column" onClick={() => onSelectThread(thread)}>
+													<motion.div
+														key={`${thread.id}-${thread.title}`}
+														initial={{ opacity: 0 }}
+														animate={{ opacity: 1 }}
+														transition={{ duration: 0.3 }}
 													>
-														Save
-													</Button>
+														<Text weight="medium">{thread.title || `Chat with ${persona.name}`}</Text>
+													</motion.div>
+													<Text size="2" color="gray">
+														{formatDistanceToNow(new Date(thread.created_at), { addSuffix: true })}
+													</Text>
 												</Flex>
-											</Dialog.Content>
-										</Dialog.Root>
-									</Flex>
-								</Flex>
-							))
+												<Dialog.Root
+													open={editingThread?.id === thread.id}
+													onOpenChange={(open) => {
+														if (!open) setEditingThread(null);
+														if (open) {
+															setEditingThread(thread);
+															setNewTitle(thread.title);
+														}
+													}}
+												>
+													<Dialog.Trigger>
+														<IconButton variant="ghost" size="1">
+															<IconEdit size={16} />
+														</IconButton>
+													</Dialog.Trigger>
+													<Dialog.Content>
+														<Dialog.Title>Rename Thread</Dialog.Title>
+														<Box my="4">
+															<TextField.Root
+																value={newTitle}
+																onChange={(e) => setNewTitle(e.target.value)}
+																placeholder="Enter new title"
+															/>
+														</Box>
+														<Flex gap="3" justify="end">
+															<Dialog.Close>
+																<Button variant="soft" color="gray">
+																	Cancel
+																</Button>
+															</Dialog.Close>
+															<Button
+																variant="solid"
+																onClick={() => handleRenameThread(thread)}
+																disabled={!newTitle.trim() || newTitle === thread.title}
+															>
+																Save
+															</Button>
+														</Flex>
+													</Dialog.Content>
+												</Dialog.Root>
+											</Flex>
+										</Flex>
+									</motion.div>
+								))}
+							</AnimatePresence>
 						)}
 					</Flex>
 				</Box>

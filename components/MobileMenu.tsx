@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import WorkplaceSettings from "./WorkplaceSettings";
 import PersonaForm from "./PersonaForm";
+import { motion, AnimatePresence } from "framer-motion";
+import { subscribeToThreadUpdates } from "@/utils/supabase/realtime";
 
 type MobileMenuProps = {
 	personas: Persona[];
@@ -14,9 +16,10 @@ type MobileMenuProps = {
 	onSelectPersona: (persona: Persona) => void;
 	onNewPersona: () => void;
 	onNewThread: (persona: Persona) => void;
+	onThreadUpdate?: (thread: Thread) => void;
 };
 
-export default function MobileMenu({ threads, onSelectPersona, onNewThread }: MobileMenuProps) {
+export default function MobileMenu({ threads, onSelectPersona, onNewThread, onThreadUpdate }: MobileMenuProps) {
 	const [selectedPersona, setSelectedPersona] = useState<Persona | null>(null);
 	const [personas, setPersonas] = useState<Persona[]>([]);
 	const [isNewPersonaOpen, setIsNewPersonaOpen] = useState(false);
@@ -30,6 +33,19 @@ export default function MobileMenu({ threads, onSelectPersona, onNewThread }: Mo
 	useEffect(() => {
 		loadPersonas();
 	}, []);
+
+	// Subscribe to thread updates
+	useEffect(() => {
+		const unsubscribers = threads.map((thread) =>
+			subscribeToThreadUpdates(thread.id, (updatedThread) => {
+				onThreadUpdate?.(updatedThread);
+			})
+		);
+
+		return () => {
+			unsubscribers.forEach((unsubscribe) => unsubscribe());
+		};
+	}, [threads, onThreadUpdate]);
 
 	const handlePersonaSelect = (persona: Persona) => {
 		setSelectedPersona(persona);
@@ -85,30 +101,41 @@ export default function MobileMenu({ threads, onSelectPersona, onNewThread }: Mo
 							<ScrollArea type="hover" scrollbars="vertical" style={{ height: "100%" }}>
 								<Box p="2">
 									<Flex direction="column" gap="3">
-										{personas.map((persona) => (
-											<Flex key={persona.id} onClick={() => handlePersonaSelect(persona)} style={{ cursor: "pointer" }}>
-												<Flex align="center" gap="2" width="100%" direction={selectedPersona ? "column" : "row"}>
-													<Avatar
-														size={"3"}
-														fallback={persona.name[0]}
-														color="blue"
-														radius="full"
-														style={{
-															outline: selectedPersona?.id === persona.id ? "2px solid var(--blue-10)" : "none",
-															outlineOffset: "2px",
-														}}
-													/>
-													{!selectedPersona && (
-														<Flex direction="column">
-															<Text weight="medium">{persona.name}</Text>
-															<Text size="1" color="gray">
-																Age: {persona.age} • {persona.experience.split(" ").slice(0, 3).join(" ")}...
-															</Text>
+										<AnimatePresence>
+											{personas.map((persona) => (
+												<motion.div
+													key={persona.id}
+													layout
+													initial={{ opacity: 0, x: -20 }}
+													animate={{ opacity: 1, x: 0 }}
+													exit={{ opacity: 0, x: 20 }}
+													transition={{ duration: 0.2 }}
+												>
+													<Flex onClick={() => handlePersonaSelect(persona)} style={{ cursor: "pointer" }}>
+														<Flex align="center" gap="2" width="100%" direction={selectedPersona ? "column" : "row"}>
+															<Avatar
+																size={"3"}
+																fallback={persona.name[0]}
+																color="blue"
+																radius="full"
+																style={{
+																	outline: selectedPersona?.id === persona.id ? "2px solid var(--blue-10)" : "none",
+																	outlineOffset: "2px",
+																}}
+															/>
+															{!selectedPersona && (
+																<Flex direction="column">
+																	<Text weight="medium">{persona.name}</Text>
+																	<Text size="1" color="gray">
+																		Age: {persona.age} • {persona.experience.split(" ").slice(0, 3).join(" ")}...
+																	</Text>
+																</Flex>
+															)}
 														</Flex>
-													)}
-												</Flex>
-											</Flex>
-										))}
+													</Flex>
+												</motion.div>
+											))}
+										</AnimatePresence>
 
 										<Box display={!selectedPersona ? "none" : "block"} mx={"auto"}>
 											<IconButton variant="ghost" size="1" onClick={() => setSelectedPersona(null)}>
@@ -126,20 +153,38 @@ export default function MobileMenu({ threads, onSelectPersona, onNewThread }: Mo
 								<ScrollArea type="hover" scrollbars="vertical">
 									<Box p="2">
 										<Flex direction="column" gap="3">
-											{threads
-												.filter((thread) => thread.persona_id === selectedPersona.id)
-												.map((thread) => (
-													<Flex key={thread.id} onClick={() => handleThreadSelect(thread)}>
-														<Flex direction="column" align="start" gap="1" width="100%">
-															<Text weight="medium">{thread.title}</Text>
-															<Text size="1" color="gray">
-																{formatDistanceToNow(new Date(thread.created_at), {
-																	addSuffix: true,
-																})}
-															</Text>
-														</Flex>
-													</Flex>
-												))}
+											<AnimatePresence>
+												{threads
+													.filter((thread) => thread.persona_id === selectedPersona.id)
+													.map((thread) => (
+														<motion.div
+															key={thread.id}
+															layout
+															initial={{ opacity: 0, y: 20 }}
+															animate={{ opacity: 1, y: 0 }}
+															exit={{ opacity: 0, y: -20 }}
+															transition={{ duration: 0.2 }}
+														>
+															<Flex onClick={() => handleThreadSelect(thread)}>
+																<Flex direction="column" align="start" gap="1" width="100%">
+																	<motion.div
+																		key={thread.title}
+																		initial={{ opacity: 0 }}
+																		animate={{ opacity: 1 }}
+																		transition={{ duration: 0.3 }}
+																	>
+																		<Text weight="medium">{thread.title || `Chat with ${selectedPersona.name}`}</Text>
+																	</motion.div>
+																	<Text size="1" color="gray">
+																		{formatDistanceToNow(new Date(thread.created_at), {
+																			addSuffix: true,
+																		})}
+																	</Text>
+																</Flex>
+															</Flex>
+														</motion.div>
+													))}
+											</AnimatePresence>
 										</Flex>
 									</Box>
 								</ScrollArea>

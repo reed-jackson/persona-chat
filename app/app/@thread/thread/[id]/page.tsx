@@ -45,11 +45,11 @@ export default function ThreadPage({ params }: { params: Promise<{ id: string }>
 				const allPersonas = await getPersonas();
 
 				// Get all threads for all personas and find the one we want
-				const allThreads = await Promise.all(allPersonas.map((p) => getThreads(p.id))).then((threadArrays) =>
+				const allThreadsData = await Promise.all(allPersonas.map((p) => getThreads(p.id))).then((threadArrays) =>
 					threadArrays.flat()
 				);
 
-				const threadData = allThreads.find((t) => t.id === id);
+				const threadData = allThreadsData.find((t) => t.id === id);
 				if (!threadData) {
 					throw new Error("Thread not found");
 				}
@@ -75,6 +75,13 @@ export default function ThreadPage({ params }: { params: Promise<{ id: string }>
 
 	const handleNewMessage = (message: Message) => {
 		setMessages((prev) => [...prev, message]);
+	};
+
+	const handleThreadUpdate = (updatedThread: Thread) => {
+		// Update the current thread if it matches
+		if (thread?.id === updatedThread.id) {
+			setThread(updatedThread);
+		}
 	};
 
 	const handleShare = async () => {
@@ -221,14 +228,20 @@ export default function ThreadPage({ params }: { params: Promise<{ id: string }>
 				style={{ borderBottom: "1px solid var(--gray-6)", height: "var(--space-9)" }}
 			>
 				<Box ml={{ initial: "8", md: "0" }}>
-					<Heading size="3">{thread.title || `Chat with ${persona.name}`}</Heading>
+					<Heading size="3">{thread?.title || `Chat with ${persona?.name}`}</Heading>
 				</Box>
 				<IconButton onClick={handleShare} variant="ghost">
 					<IconShare size={16} />
 				</IconButton>
 			</Flex>
 			<Box className="flex-1 min-h-0 overflow-y-auto">
-				<ChatThread thread={thread} persona={persona} messages={messages} onNewMessage={handleNewMessage} />
+				<ChatThread
+					thread={thread}
+					persona={persona}
+					messages={messages}
+					onNewMessage={handleNewMessage}
+					onThreadUpdate={handleThreadUpdate}
+				/>
 			</Box>
 
 			<Dialog.Root open={shareDialogOpen} onOpenChange={setShareDialogOpen}>

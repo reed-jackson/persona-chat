@@ -233,13 +233,7 @@ export async function updateThread(threadId: string, updates: Partial<Thread>) {
 
 	if (!user) throw new Error("User not authenticated");
 
-	const { data, error } = await supabase
-		.from("threads")
-		.update(updates)
-		.eq("id", threadId)
-		.eq("user_id", user.id)
-		.select()
-		.single();
+	const { data, error } = await supabase.from("threads").update(updates).eq("id", threadId).select().single();
 
 	if (error) throw error;
 	return data;
