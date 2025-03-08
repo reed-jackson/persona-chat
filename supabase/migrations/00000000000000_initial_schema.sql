@@ -103,4 +103,7 @@ CREATE TRIGGER update_personas_updated_at
     EXECUTE FUNCTION update_updated_at_column();
 
 -- Enable realtime for messages table
-ALTER PUBLICATION supabase_realtime ADD TABLE messages; 
+ALTER PUBLICATION supabase_realtime ADD TABLE messages;
+
+-- Enable realtime for threads table
+ALTER PUBLICATION supabase_realtime ADD TABLE threads; 

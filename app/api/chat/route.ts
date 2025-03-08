@@ -62,38 +62,7 @@ export async function POST(req: Request) {
 		// Enhance system prompt with workplace context if available
 		let enhancedSystemPrompt = thread.personas.system_prompt;
 		if (workplaceContext) {
-			enhancedSystemPrompt = `Context about the company/product:
-Company: ${workplaceContext.company_name}
-Product: ${workplaceContext.product_name}
-Description: ${workplaceContext.description}
-Industry: ${workplaceContext.industry}
-Target Audience: ${workplaceContext.target_audience}
-
-Original Persona Instructions:
-${thread.personas.system_prompt}
-
-CONVERSATION STYLE GUIDELINES:
-- You are having a casual text message conversation with a Product Manager
-- Write like you're texting: use natural, conversational language
-- Keep responses concise.
-- Speak from your authentic experience and perspective as a potential customer
-- Focus on your needs and pain points rather than specific product features
-- Examples of good responses:
-  - "In my day-to-day work, I really need..."
-  - "The biggest challenge for me is..."
-  - "What matters most to me is..."
-  - "My team would benefit from..."
-- As the conversation get longer, you can get more specific and detailed.
-- As the conversation get longer, make sure to vary the cadence of your messages to be more natural.
-- DO NOT reference or assume specific product features exist
-- DO NOT include any actions, gestures, or roleplay
-- It's ok to use:
-  - Brief responses ("That makes sense")
-  - Common emojis (sparingly)
-  - Multiple short messages instead of one long one
-- Stay in character as ${thread.personas.name} but focus on natural dialogue
-
-You are texting with a Product manager for ${workplaceContext.company_name}. Share your authentic perspective and needs as ${thread.personas.name}, focusing on your real-world challenges and what would help you most in ${workplaceContext.product_name}'s space.`;
+			enhancedSystemPrompt = `${enhancedSystemPrompt}\n\nContext about the workplace:\nProduct: ${workplaceContext.product_name}\nTeam: ${workplaceContext.team_name}\nCompany: ${workplaceContext.company_name}`;
 		}
 
 		// Generate AI response
@@ -118,8 +87,46 @@ You are texting with a Product manager for ${workplaceContext.company_name}. Sha
 			throw aiMessageError;
 		}
 
-		return NextResponse.json({ response: aiResponseText });
-	} catch {
+		let updatedTitle: string | undefined;
+
+		// If this is the first AI response (2 messages total), generate a title
+		if (messages.length === 1) {
+			const titlePrompt = `Given this thread history:\nUser: ${content}\nAI: ${aiResponseText}\n\nGenerate a concise thread title (3-8 words) that reflects the conversation context and aligns with PersonaChat's goal of simulating product growth feedback for ${
+				workplaceContext?.product_name || "the product"
+			}. The title should be specific and descriptive.`;
+
+			const titleResponse = await generatePersonaResponse({
+				messages: [
+					{ id: "1", thread_id: threadId, content: titlePrompt, sender: "user", created_at: new Date().toISOString() },
+				],
+				systemPrompt:
+					"You are a helpful AI that generates concise, relevant titles. Respond with ONLY the title, no explanation or quotes.",
+			});
+
+			// Clean and validate the title
+			const cleanTitle = titleResponse.replace(/["']/g, "").trim();
+			const words = cleanTitle.split(/\s+/);
+			const finalTitle = words.length > 8 ? words.slice(0, 8).join(" ") : cleanTitle;
+
+			// Update thread title
+			const { data: updatedThread } = await supabase
+				.from("threads")
+				.update({ title: finalTitle })
+				.eq("id", threadId)
+				.select()
+				.single();
+
+			if (updatedThread) {
+				updatedTitle = updatedThread.title;
+			}
+		}
+
+		return NextResponse.json({
+			response: aiResponseText,
+			...(updatedTitle && { updatedTitle }),
+		});
+	} catch (error) {
+		console.error("Chat error:", error);
 		return NextResponse.json({ error: "Failed to process message" }, { status: 500 });
 	}
 }

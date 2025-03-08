@@ -3,7 +3,7 @@ import { IconSend } from "@tabler/icons-react";
 import { type Message, type Thread, type Persona } from "@/lib/supabase";
 import { useState, useRef, useEffect } from "react";
 import MessageBubble from "./MessageBubble";
-import { subscribeToMessages } from "@/utils/supabase/realtime";
+import { subscribeToMessages, subscribeToThreadUpdates } from "@/utils/supabase/realtime";
 import { useAutoResizeTextArea } from "@/hooks/useAutoResizeTextArea";
 
 type ChatThreadProps = {
@@ -11,12 +11,14 @@ type ChatThreadProps = {
 	persona: Persona;
 	messages: Message[];
 	onNewMessage?: (message: Message) => void;
+	onThreadUpdate?: (thread: Thread) => void;
 };
 
-export default function ChatThread({ thread, messages, onNewMessage }: ChatThreadProps) {
+export default function ChatThread({ thread, messages, onNewMessage, onThreadUpdate }: ChatThreadProps) {
 	const [newMessage, setNewMessage] = useState("");
 	const [error, setError] = useState<string>();
 	const [sending, setSending] = useState(false);
+	const [previousTitle, setPreviousTitle] = useState(thread.title);
 	const scrollAreaRef = useRef<HTMLDivElement>(null);
 	const inputRef = useRef<HTMLTextAreaElement>(null);
 	const lastMessageRef = useRef<Message | null>(null);
@@ -43,17 +45,29 @@ export default function ChatThread({ thread, messages, onNewMessage }: ChatThrea
 		}
 	}, [messages, handleTextAreaInput]);
 
+	// Track title changes for animation
+	useEffect(() => {
+		if (thread.title !== previousTitle) {
+			setPreviousTitle(thread.title);
+		}
+	}, [thread.title, previousTitle]);
+
 	// Subscribe to real-time message updates
 	useEffect(() => {
-		const unsubscribe = subscribeToMessages(thread.id, (message) => {
+		const unsubscribeMessages = subscribeToMessages(thread.id, (message) => {
 			onNewMessage?.(message);
 		});
 
-		// Cleanup subscription on unmount or thread change
+		const unsubscribeThread = subscribeToThreadUpdates(thread.id, (updatedThread) => {
+			onThreadUpdate?.(updatedThread);
+		});
+
+		// Cleanup subscriptions on unmount or thread change
 		return () => {
-			unsubscribe();
+			unsubscribeMessages();
+			unsubscribeThread();
 		};
-	}, [thread.id, onNewMessage]);
+	}, [thread.id, onNewMessage, onThreadUpdate]);
 
 	const handleSend = async () => {
 		if (!newMessage.trim() || sending) return;
@@ -74,6 +88,16 @@ export default function ChatThread({ thread, messages, onNewMessage }: ChatThrea
 
 			if (!response.ok) {
 				throw new Error("Failed to get persona response");
+			}
+
+			const data = await response.json();
+
+			// If we got an updated title, update the thread
+			if (data.updatedTitle && onThreadUpdate) {
+				onThreadUpdate({
+					...thread,
+					title: data.updatedTitle,
+				});
 			}
 
 			setNewMessage("");
