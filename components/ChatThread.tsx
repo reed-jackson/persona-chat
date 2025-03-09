@@ -92,6 +92,8 @@ export default function ChatThread({ thread, messages, onNewMessage, onThreadUpd
 
 			const data = await response.json();
 
+			console.log("data: ", data);
+
 			// If we got an updated title, update the thread
 			if (data.updatedTitle && onThreadUpdate) {
 				onThreadUpdate({
@@ -117,7 +119,7 @@ export default function ChatThread({ thread, messages, onNewMessage, onThreadUpd
 	};
 
 	return (
-		<Flex direction="column" className="h-full" position="relative">
+		<Flex direction="column" width="100%" height="100%" position="relative">
 			{error && (
 				<Box
 					px="4"

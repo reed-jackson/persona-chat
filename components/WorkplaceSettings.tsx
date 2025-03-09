@@ -7,6 +7,7 @@ import { Flex, Box } from "@radix-ui/themes";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { useTheme } from "next-themes";
+import { toast } from "sonner";
 
 type WorkplaceContext = Database["public"]["Tables"]["workplace_context"]["Row"];
 type WorkplaceContextInput = Omit<WorkplaceContext, "id" | "user_id" | "created_at" | "updated_at">;
@@ -61,9 +62,24 @@ export default function WorkplaceSettings({ initialData, onSave }: WorkplaceSett
 				description: formData.get("description") as string,
 				industry: formData.get("industry") as string,
 				target_audience: formData.get("target_audience") as string,
+				prompt: "",
 			};
 
 			const result = await saveWorkplaceContext(data);
+
+			toast.success("Workplace context saved");
+
+			const prompt = await fetch("/api/generate/workplace-prompt", {
+				method: "POST",
+				body: JSON.stringify(data),
+			});
+
+			const promptData = await prompt.json();
+
+			toast.success("Workplace prompt generated");
+
+			await saveWorkplaceContext({ ...data, prompt: promptData.prompt });
+
 			onSave?.(result);
 			setOpen(false);
 		} catch (error) {
@@ -163,7 +179,7 @@ export default function WorkplaceSettings({ initialData, onSave }: WorkplaceSett
 										</Text>
 										<TextField.Root
 											name="company_name"
-											defaultValue={initialData?.company_name}
+											defaultValue={initialData?.company_name || ""}
 											placeholder="Acme Corp"
 											required
 										/>
@@ -175,7 +191,7 @@ export default function WorkplaceSettings({ initialData, onSave }: WorkplaceSett
 										</Text>
 										<TextField.Root
 											name="product_name"
-											defaultValue={initialData?.product_name}
+											defaultValue={initialData?.product_name || ""}
 											placeholder="GrowthHub"
 											required
 										/>
@@ -187,14 +203,14 @@ export default function WorkplaceSettings({ initialData, onSave }: WorkplaceSett
 										</Text>
 										<TextArea
 											name="description"
-											defaultValue={initialData?.description}
+											defaultValue={initialData?.description || ""}
 											placeholder="A SaaS tool for product growth teams..."
 											required
 											size="3"
 										/>
 									</Box>
 
-									<Box>
+									<Flex direction="column" gap="0">
 										<Text as="label" size="2" mb="1" weight="medium">
 											Industry
 										</Text>
@@ -208,7 +224,7 @@ export default function WorkplaceSettings({ initialData, onSave }: WorkplaceSett
 												))}
 											</Select.Content>
 										</Select.Root>
-									</Box>
+									</Flex>
 
 									<Box>
 										<Text as="label" size="2" mb="1" weight="medium">
@@ -216,7 +232,7 @@ export default function WorkplaceSettings({ initialData, onSave }: WorkplaceSett
 										</Text>
 										<TextArea
 											name="target_audience"
-											defaultValue={initialData?.target_audience}
+											defaultValue={initialData?.target_audience || ""}
 											placeholder="Product managers and growth marketers"
 											required
 											size="3"

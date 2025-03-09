@@ -31,7 +31,10 @@ export async function POST(req: Request) {
 		}
 
 		// Get workplace context
-		const { data: workplaceContext } = await supabase.from("workplace_context").select("*").single();
+		const { data: workplaceContext } = await supabase
+			.from("workplace_context")
+			.select("prompt, product_name, company_name")
+			.single();
 
 		// Save user message
 		const { error: userMessageError } = await supabase
@@ -61,9 +64,12 @@ export async function POST(req: Request) {
 
 		// Enhance system prompt with workplace context if available
 		let enhancedSystemPrompt = thread.personas.system_prompt;
+
 		if (workplaceContext) {
-			enhancedSystemPrompt = `${enhancedSystemPrompt}\n\nContext about the workplace:\nProduct: ${workplaceContext.product_name}\nTeam: ${workplaceContext.team_name}\nCompany: ${workplaceContext.company_name}`;
+			enhancedSystemPrompt = `${enhancedSystemPrompt}\n\n${workplaceContext.prompt}`;
 		}
+
+		enhancedSystemPrompt = `This is a text based chat application. \n\n${enhancedSystemPrompt}\n\nThere is no need to narrate what you are doing, just respond to the user's message.`;
 
 		// Generate AI response
 		const aiResponseText = await generatePersonaResponse({
@@ -92,7 +98,7 @@ export async function POST(req: Request) {
 		// If this is the first AI response (2 messages total), generate a title
 		if (messages.length === 1) {
 			const titlePrompt = `Given this thread history:\nUser: ${content}\nAI: ${aiResponseText}\n\nGenerate a concise thread title (3-8 words) that reflects the conversation context and aligns with PersonaChat's goal of simulating product growth feedback for ${
-				workplaceContext?.product_name || "the product"
+				workplaceContext?.company_name || "the product"
 			}. The title should be specific and descriptive.`;
 
 			const titleResponse = await generatePersonaResponse({

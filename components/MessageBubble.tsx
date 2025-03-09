@@ -13,7 +13,7 @@ export default function MessageBubble({ message, isUser }: MessageBubbleProps) {
 		<Flex direction="column" width={"100%"} align={isUser ? "end" : "start"} className={`mb-2`}>
 			<Flex
 				style={{
-					backgroundColor: isUser ? "var(--blue-10)" : "var(--gray-4)",
+					backgroundColor: isUser ? "var(--blue-9)" : "var(--gray-4)",
 					color: isUser ? "white" : "var(--gray-12)",
 					borderRadius: "var(--radius-4)",
 				}}

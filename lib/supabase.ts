@@ -62,6 +62,10 @@ export async function updatePersona(id: string, updates: Partial<Persona>) {
 		data: { user },
 	} = await supabase.auth.getUser();
 
+	console.log("updates: ", updates);
+	console.log("id: ", id);
+	console.log("user: ", user);
+
 	if (!user) throw new Error("User not authenticated");
 
 	const { data, error } = await supabase
@@ -71,6 +75,9 @@ export async function updatePersona(id: string, updates: Partial<Persona>) {
 		.eq("user_id", user.id)
 		.select()
 		.single();
+
+	console.log("data: ", data);
+	console.log("error: ", error);
 
 	if (error) throw error;
 	return data;
@@ -155,11 +162,7 @@ export async function createMessage(threadId: string, content: string, sender: "
 }
 
 export async function getMessages(threadId: string) {
-	const {
-		data: { user },
-	} = await supabase.auth.getUser();
-
-	if (!user) throw new Error("User not authenticated");
+	const supabase = await createClient();
 
 	const { data, error } = await supabase
 		.from("messages")

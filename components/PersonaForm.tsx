@@ -1,7 +1,24 @@
-import { Button, Flex, Heading, TextArea, TextField, Tabs } from "@radix-ui/themes";
+"use client";
+
+import { Button, Flex, Heading, TextArea, TextField, Tabs, Select, Text } from "@radix-ui/themes";
 import { createPersona, updatePersona, type Persona } from "@/lib/supabase";
 import { useState } from "react";
 import { IconRefresh } from "@tabler/icons-react";
+import { toast } from "sonner";
+
+const INDUSTRY_OPTIONS = [
+	"SaaS",
+	"E-commerce",
+	"Gaming",
+	"Healthcare",
+	"Education",
+	"Finance",
+	"Manufacturing",
+	"Real Estate",
+	"Media & Entertainment",
+	"Technology",
+	"Other",
+] as const;
 
 type PersonaFormProps = {
 	persona?: Partial<Persona>;
@@ -16,9 +33,10 @@ export default function PersonaForm({ persona, onSuccess, onCancel }: PersonaFor
 	const [activeTab, setActiveTab] = useState("info");
 	const [formData, setFormData] = useState({
 		name: persona?.name || "",
+		title: persona?.title || "",
 		age: persona?.age?.toString() || "",
+		industry: persona?.industry || "Technology",
 		experience: persona?.experience || "",
-		personality: persona?.personality || "",
 		pain_points: persona?.pain_points || "",
 		values: persona?.values || "",
 		system_prompt: persona?.system_prompt || "",
@@ -29,19 +47,24 @@ export default function PersonaForm({ persona, onSuccess, onCancel }: PersonaFor
 		setFormData((prev) => ({ ...prev, [name]: value }));
 	};
 
+	const handleSelectChange = (name: string, value: string) => {
+		setFormData((prev) => ({ ...prev, [name]: value }));
+	};
+
 	const generateSystemPrompt = async () => {
 		setIsGenerating(true);
 		setError(undefined);
 
 		try {
-			const response = await fetch("/api/generate-prompt", {
+			const response = await fetch("/api/generate/persona-prompt", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({
 					name: formData.name,
+					title: formData.title,
 					age: parseInt(formData.age),
+					industry: formData.industry,
 					experience: formData.experience,
-					personality: formData.personality,
 					pain_points: formData.pain_points,
 					values: formData.values,
 				}),
@@ -49,17 +72,15 @@ export default function PersonaForm({ persona, onSuccess, onCancel }: PersonaFor
 
 			if (!response.ok) throw new Error("Failed to generate prompt");
 
-			const { prompt } = await response.json();
-			setFormData((prev) => ({ ...prev, system_prompt: prompt }));
+			const { system_prompt } = await response.json();
+			setFormData((prev) => ({ ...prev, system_prompt }));
+			toast.success("Generated system prompt");
 
-			// If we have a persona ID, save the new prompt immediately
-			if (persona?.id) {
-				await updatePersona(persona.id, { system_prompt: prompt });
-			}
-
-			return prompt;
+			return system_prompt;
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "Failed to generate prompt");
+			const message = err instanceof Error ? err.message : "Failed to generate prompt";
+			toast.error(message);
+			setError(message);
 			throw err;
 		} finally {
 			setIsGenerating(false);
@@ -78,9 +99,10 @@ export default function PersonaForm({ persona, onSuccess, onCancel }: PersonaFor
 			// Then save all persona data
 			const personaData = {
 				name: formData.name,
+				title: formData.title,
 				age: parseInt(formData.age),
+				industry: formData.industry,
 				experience: formData.experience,
-				personality: formData.personality,
 				pain_points: formData.pain_points,
 				values: formData.values,
 				system_prompt: prompt,
@@ -88,26 +110,12 @@ export default function PersonaForm({ persona, onSuccess, onCancel }: PersonaFor
 			};
 
 			const result = persona?.id ? await updatePersona(persona.id, personaData) : await createPersona(personaData);
+			toast.success(persona?.id ? "Updated persona successfully" : "Created new persona successfully");
 			onSuccess?.(result);
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "Failed to save persona");
-		} finally {
-			setIsSubmitting(false);
-		}
-	};
-
-	const handlePromptSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-		e.preventDefault();
-		setIsSubmitting(true);
-		setError(undefined);
-
-		try {
-			if (!persona?.id) throw new Error("No persona ID found");
-
-			await updatePersona(persona.id, { system_prompt: formData.system_prompt });
-			onSuccess?.(await updatePersona(persona.id, { system_prompt: formData.system_prompt }));
-		} catch (err) {
-			setError(err instanceof Error ? err.message : "Failed to save prompt");
+			const message = err instanceof Error ? err.message : "Failed to save persona";
+			toast.error(message);
+			setError(message);
 		} finally {
 			setIsSubmitting(false);
 		}
@@ -116,9 +124,10 @@ export default function PersonaForm({ persona, onSuccess, onCancel }: PersonaFor
 	const isInfoComplete = () => {
 		return (
 			formData.name &&
+			formData.title &&
 			formData.age &&
+			formData.industry &&
 			formData.experience &&
-			formData.personality &&
 			formData.pain_points &&
 			formData.values
 		);
@@ -139,87 +148,112 @@ export default function PersonaForm({ persona, onSuccess, onCancel }: PersonaFor
 				<Tabs.Content value="info" style={{ padding: "8px" }}>
 					<form onSubmit={handleInfoSubmit} className="mt-4">
 						<Flex direction="column" gap="4">
-							<div>
-								<label htmlFor="name" className="text-sm font-medium mb-1.5 block">
-									Name
-								</label>
-								<TextField.Root
-									value={formData.name}
-									onChange={handleInputChange}
-									name="name"
-									id="name"
-									required
-								></TextField.Root>
-							</div>
+							{/* Basic Information */}
+							<Flex gap="4">
+								<div className="flex-1">
+									<Text as="label" size="2" className="font-medium mb-1.5 block">
+										Name
+									</Text>
+									<TextField.Root
+										value={formData.name}
+										onChange={handleInputChange}
+										name="name"
+										id="name"
+										required
+									></TextField.Root>
+								</div>
+								<div className="flex-1">
+									<Text as="label" size="2" className="font-medium mb-1.5 block">
+										Title
+									</Text>
+									<TextField.Root
+										value={formData.title}
+										onChange={handleInputChange}
+										name="title"
+										id="title"
+										placeholder="Product Manager"
+										required
+									></TextField.Root>
+								</div>
+							</Flex>
 
-							<div>
-								<label htmlFor="age" className="text-sm font-medium mb-1.5 block">
-									Age
-								</label>
-								<TextField.Root
-									value={formData.age}
-									onChange={handleInputChange}
-									name="age"
-									id="age"
-									type="number"
-									required
-								></TextField.Root>
-							</div>
+							<Flex gap="4">
+								<div className="flex-1">
+									<Text as="label" size="2" className="font-medium mb-1.5 block">
+										Age
+									</Text>
+									<TextField.Root
+										value={formData.age}
+										onChange={handleInputChange}
+										name="age"
+										id="age"
+										type="number"
+										required
+									></TextField.Root>
+								</div>
+								<div className="flex-1">
+									<Text as="label" size="2" className="font-medium mb-1.5 block">
+										Industry
+									</Text>
+									<Select.Root
+										name="industry"
+										value={formData.industry}
+										onValueChange={(value) => handleSelectChange("industry", value)}
+									>
+										<Select.Trigger />
+										<Select.Content>
+											{INDUSTRY_OPTIONS.map((industry) => (
+												<Select.Item key={industry} value={industry}>
+													{industry}
+												</Select.Item>
+											))}
+										</Select.Content>
+									</Select.Root>
+								</div>
+							</Flex>
 
+							{/* Professional Context */}
 							<div>
-								<label htmlFor="experience" className="text-sm font-medium mb-1.5 block">
+								<Text as="label" size="2" className="font-medium mb-1.5 block">
 									Professional Experience
-								</label>
+								</Text>
 								<TextArea
 									id="experience"
 									name="experience"
-									placeholder="Describe their background and experience..."
+									placeholder="Describe their role, responsibilities, and years of experience..."
 									value={formData.experience}
 									onChange={handleInputChange}
 									required
 								/>
 							</div>
 
+							{/* Needs and Motivations */}
 							<div>
-								<label htmlFor="personality" className="text-sm font-medium mb-1.5 block">
-									Personality Traits
-								</label>
-								<TextArea
-									id="personality"
-									name="personality"
-									placeholder="Describe their personality traits..."
-									value={formData.personality}
-									onChange={handleInputChange}
-									required
-								/>
-							</div>
-
-							<div>
-								<label htmlFor="pain_points" className="text-sm font-medium mb-1.5 block">
-									Pain Points
-								</label>
+								<Text as="label" size="2" className="font-medium mb-1.5 block">
+									Pain Points & Challenges
+								</Text>
 								<TextArea
 									id="pain_points"
 									name="pain_points"
-									placeholder="What challenges do they face?"
+									placeholder="What are their main frustrations, challenges, and unmet needs in their role?"
 									value={formData.pain_points}
 									onChange={handleInputChange}
-									rows={6}
+									rows={4}
 									required
 								/>
 							</div>
 
 							<div>
-								<label htmlFor="values" className="text-sm font-medium mb-1.5 block">
+								<Text as="label" size="2" className="font-medium mb-1.5 block">
 									Values & Priorities
-								</label>
+								</Text>
 								<TextArea
 									id="values"
 									name="values"
-									placeholder="What do they value most?"
+									placeholder="What do they value most in products/solutions? What are their key priorities and goals?"
 									value={formData.values}
 									onChange={handleInputChange}
-									rows={6}
+									rows={4}
 									required
 								/>
 							</div>
@@ -241,7 +275,7 @@ export default function PersonaForm({ persona, onSuccess, onCancel }: PersonaFor
 				</Tabs.Content>
 
 				<Tabs.Content value="prompt">
-					<form onSubmit={handlePromptSubmit}>
+					<form>
 						<Flex direction="column" gap="4" mt={"4"}>
 							<Flex justify="between" align="center">
 								<Button
@@ -275,7 +309,7 @@ export default function PersonaForm({ persona, onSuccess, onCancel }: PersonaFor
 									Cancel
 								</Button>
 							)}
-							<Button type="submit" disabled={isSubmitting}>
+							<Button type="button" disabled={isSubmitting}>
 								{isSubmitting ? "Saving..." : "Save Prompt"}
 							</Button>
 						</Flex>

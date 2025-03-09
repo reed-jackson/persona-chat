@@ -11,25 +11,32 @@ import {
 	getThreads,
 	getWorkplaceContext,
 	WorkplaceContext,
+	createThread,
+	getMessages,
+	Message,
 } from "@/lib/supabase";
 import { IconMessageBolt, IconUserPlus } from "@tabler/icons-react";
 import PersonaForm from "@/components/PersonaForm";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import BulkMessage from "@/components/BulkMessage";
+import ChatThread from "@/components/ChatThread";
 
 export default function AppPage() {
-	const params = useParams();
-	const threadId = typeof params?.id === "string" ? params.id : undefined;
+	const router = useRouter();
+	const searchParams = useSearchParams();
+	const threadId = searchParams.get("thread");
+	const personaId = searchParams.get("persona");
+
 	const [selectedPersona, setSelectedPersona] = useState<Persona>();
 	const [personas, setPersonas] = useState<Persona[]>([]);
 	const [threads, setThreads] = useState<Thread[]>([]);
+	const [messages, setMessages] = useState<Message[]>([]);
 	const [isNewPersonaOpen, setIsNewPersonaOpen] = useState(false);
 	const [isBulkMessageOpen, setIsBulkMessageOpen] = useState(false);
 	const [editingPersona, setEditingPersona] = useState<Persona>();
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string>();
 	const [workplaceContext, setWorkplaceContext] = useState<WorkplaceContext>();
-	const router = useRouter();
 
 	// Load personas and workplace context on mount
 	useEffect(() => {
@@ -45,6 +52,16 @@ export default function AppPage() {
 			setThreads([]);
 		}
 	}, [selectedPersona]);
+
+	// Update selected persona when personaId changes in URL
+	useEffect(() => {
+		if (personaId) {
+			const persona = personas.find((p) => p.id === personaId);
+			if (persona) {
+				setSelectedPersona(persona);
+			}
+		}
+	}, [personaId, personas]);
 
 	const loadPersonas = async () => {
 		try {
@@ -79,6 +96,7 @@ export default function AppPage() {
 		setPersonas((prev) => [newPersona, ...prev]);
 		setSelectedPersona(newPersona);
 		setIsNewPersonaOpen(false);
+		updateURL(newPersona.id);
 	};
 
 	const handlePersonaUpdate = (updatedPersona: Persona) => {
@@ -91,13 +109,20 @@ export default function AppPage() {
 		setPersonas((prev) => prev.filter((p) => p.id !== deletedId));
 		if (selectedPersona?.id === deletedId) {
 			setSelectedPersona(undefined);
-			router.push("/app");
+			updateURL();
 		}
 	};
 
-	const handleNewThread = (thread: Thread) => {
-		setThreads((prev) => [thread, ...prev]);
-		router.push(`/app/thread/${thread.id}`);
+	const handleNewThread = async (persona: Persona) => {
+		try {
+			const thread = await createThread(persona.id, `Chat with ${persona.name}`);
+			setThreads((prev) => [thread, ...prev]);
+			updateURL(persona.id, thread.id);
+			return thread;
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Failed to create thread");
+			throw err;
+		}
 	};
 
 	const handleWorkplaceContextSave = (data: WorkplaceContext) => {
@@ -113,10 +138,34 @@ export default function AppPage() {
 		}
 	};
 
+	const updateURL = (newPersonaId?: string, newThreadId?: string) => {
+		const params = new URLSearchParams();
+		if (newPersonaId) params.set("persona", newPersonaId);
+		if (newThreadId) params.set("thread", newThreadId);
+		router.push(`/app?${params.toString()}`);
+	};
+
+	const handleSelectPersona = (persona: Persona) => {
+		setSelectedPersona(persona);
+		updateURL(persona.id || undefined);
+	};
+
+	const handleSelectThread = async (thread: Thread) => {
+		updateURL(thread.persona_id || undefined, thread.id || undefined);
+
+		setMessages([]);
+		const messages = await getMessages(thread.id);
+		setMessages(messages);
+	};
+
+	const handleNewMessage = (message: Message) => {
+		setMessages((prev) => [...prev, message]);
+	};
+
 	return (
-		<Flex className="h-full">
+		<Flex width="100%" height="100%">
 			{/* Left sidebar with personas */}
-			<Box display={{ initial: "none", md: "block" }} width={"320px"} style={{ borderRight: "1px solid var(--gray-6)" }}>
+			<Box display={{ initial: "none", md: "block" }} width={"340px"} style={{ borderRight: "1px solid var(--gray-6)" }}>
 				<Flex direction="column" className="h-full">
 					<Box px="4" py="3" style={{ borderBottom: "1px solid var(--gray-6)", height: "var(--space-9)" }}>
 						<Flex justify="between" align="center" height="100%">
@@ -163,7 +212,7 @@ export default function AppPage() {
 							<PersonaList
 								personas={personas}
 								selectedPersonaId={selectedPersona?.id}
-								onSelectPersona={setSelectedPersona}
+								onSelectPersona={handleSelectPersona}
 								onEditPersona={setEditingPersona}
 								onDeletePersona={handlePersonaDelete}
 								workplaceContext={workplaceContext}
@@ -176,14 +225,32 @@ export default function AppPage() {
 
 			{/* Middle panel with threads */}
 			{selectedPersona && (
-				<Box display={{ initial: "none", md: "block" }} width="280px" style={{ borderRight: "1px solid var(--gray-6)" }}>
+				<Box
+					display={{ initial: "none", md: "block" }}
+					width="280px"
+					flexShrink={"0"}
+					style={{ borderRight: "1px solid var(--gray-6)" }}
+				>
 					<PersonaThreads
 						persona={selectedPersona}
 						threads={threads}
-						onNewThread={handleNewThread}
-						onSelectThread={(thread) => router.push(`/app/thread/${thread.id}`)}
-						selectedThreadId={threadId}
+						onNewThread={() => handleNewThread(selectedPersona)}
+						onSelectThread={handleSelectThread}
+						selectedThreadId={threadId || undefined}
 					/>
+				</Box>
+			)}
+
+			{/* Right panel with chat thread */}
+			{threadId && selectedPersona && (
+				<Box width="100%">
+					{(() => {
+						const thread = threads.find((t) => t.id === threadId);
+						if (!thread) return null;
+						return (
+							<ChatThread messages={messages} onNewMessage={handleNewMessage} thread={thread} persona={selectedPersona} />
+						);
+					})()}
 				</Box>
 			)}
 
