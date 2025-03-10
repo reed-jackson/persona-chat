@@ -1,10 +1,11 @@
-import { Box, Button, Flex, ScrollArea, Text, TextArea } from "@radix-ui/themes";
-import { IconSend } from "@tabler/icons-react";
+import { Box, Button, Flex, IconButton, ScrollArea, Text, TextArea } from "@radix-ui/themes";
+import { IconSend, IconShare } from "@tabler/icons-react";
 import { type Message, type Thread, type Persona } from "@/lib/supabase";
 import { useState, useRef, useEffect } from "react";
 import MessageBubble from "./MessageBubble";
 import { subscribeToMessages, subscribeToThreadUpdates } from "@/utils/supabase/realtime";
 import { useAutoResizeTextArea } from "@/hooks/useAutoResizeTextArea";
+import { createClient } from "@/utils/supabase/client";
 
 type ChatThreadProps = {
 	thread: Thread;
@@ -14,16 +15,44 @@ type ChatThreadProps = {
 	onThreadUpdate?: (thread: Thread) => void;
 };
 
-export default function ChatThread({ thread, messages, onNewMessage, onThreadUpdate }: ChatThreadProps) {
+export default function ChatThread({ thread, persona, messages, onNewMessage, onThreadUpdate }: ChatThreadProps) {
 	const [newMessage, setNewMessage] = useState("");
 	const [error, setError] = useState<string>();
+	const [success, setSuccess] = useState<string>();
 	const [sending, setSending] = useState(false);
 	const [previousTitle, setPreviousTitle] = useState(thread.title);
+	const [isSharing, setIsSharing] = useState(false);
 	const scrollAreaRef = useRef<HTMLDivElement>(null);
 	const inputRef = useRef<HTMLTextAreaElement>(null);
 	const lastMessageRef = useRef<Message | null>(null);
+	const errorTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const successTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 	const { handleTextAreaInput, textAreaStyles } = useAutoResizeTextArea();
+
+	// Clear notifications on unmount
+	useEffect(() => {
+		return () => {
+			if (errorTimeoutRef.current) clearTimeout(errorTimeoutRef.current);
+			if (successTimeoutRef.current) clearTimeout(successTimeoutRef.current);
+		};
+	}, []);
+
+	// Handle error display and auto-dismiss
+	const showError = (message: string) => {
+		setError(message);
+		setSuccess(undefined);
+		if (errorTimeoutRef.current) clearTimeout(errorTimeoutRef.current);
+		errorTimeoutRef.current = setTimeout(() => setError(undefined), 5000);
+	};
+
+	// Handle success display and auto-dismiss
+	const showSuccess = (message: string) => {
+		setSuccess(message);
+		setError(undefined);
+		if (successTimeoutRef.current) clearTimeout(successTimeoutRef.current);
+		successTimeoutRef.current = setTimeout(() => setSuccess(undefined), 5000);
+	};
 
 	useEffect(() => {
 		// Scroll to bottom when messages change
@@ -118,20 +147,107 @@ export default function ChatThread({ thread, messages, onNewMessage, onThreadUpd
 		}
 	};
 
+	const handleShare = async () => {
+		setIsSharing(true);
+		const supabase = createClient();
+
+		try {
+			// First, get all messages for this thread
+			const { data: threadMessages, error: messagesError } = await supabase
+				.from("messages")
+				.select("*")
+				.eq("thread_id", thread.id)
+				.order("created_at", { ascending: true });
+
+			if (messagesError) throw messagesError;
+
+			// Create a public thread entry
+			const { data: publicThread, error: insertError } = await supabase
+				.from("public_threads")
+				.insert({
+					thread_id: thread.id,
+					title: thread.title,
+					messages: threadMessages,
+					persona_details: {
+						name: persona.name,
+						title: persona.title,
+						experience: persona.experience,
+						industry: persona.industry,
+					},
+					created_by: (await supabase.auth.getUser()).data.user?.id || "",
+				})
+				.select()
+				.single();
+
+			if (insertError) throw insertError;
+
+			// Create the shareable URL with the correct format
+			const shareUrl = `${window.location.origin}/public/thread/${publicThread.id}`;
+			await navigator.clipboard.writeText(shareUrl);
+
+			// Update the thread with the public_id
+			await supabase.from("threads").update({ public_id: publicThread.id }).eq("id", thread.id);
+
+			showSuccess("Share link copied to clipboard!");
+		} catch (err) {
+			console.error("Share error:", err);
+			showError(err instanceof Error ? err.message : "Failed to create share link");
+		} finally {
+			setIsSharing(false);
+		}
+	};
+
 	return (
 		<Flex direction="column" width="100%" height="100%" position="relative">
+			{/* Header */}
+			<Box px="4" py="3" style={{ borderBottom: "1px solid var(--gray-6)", height: "var(--space-9)" }}>
+				<Flex justify="between" align="center" height="100%">
+					<Text size="3" weight="medium" className="truncate">
+						{thread.title}
+					</Text>
+					<IconButton size="2" variant="ghost" onClick={handleShare} disabled={isSharing}>
+						<IconShare size={16} />
+					</IconButton>
+				</Flex>
+			</Box>
+
+			{/* Notifications */}
 			{error && (
 				<Box
 					px="4"
 					py="2"
 					position="absolute"
-					top="0"
+					top="var(--space-9)"
 					left="0"
 					right="0"
-					style={{ zIndex: 1000, backgroundColor: "var(--red-3)" }}
+					style={{
+						zIndex: 1000,
+						backgroundColor: "var(--red-3)",
+						transition: "opacity 150ms ease-in-out",
+					}}
 				>
 					<Text color="red" size="2">
 						{error}
+					</Text>
+				</Box>
+			)}
+
+			{success && (
+				<Box
+					px="4"
+					py="2"
+					position="absolute"
+					top="var(--space-9)"
+					left="0"
+					right="0"
+					style={{
+						zIndex: 1000,
+						backgroundColor: "var(--green-3)",
+						transition: "opacity 150ms ease-in-out",
+					}}
+				>
+					<Text color="green" size="2">
+						{success}
 					</Text>
 				</Box>
 			)}

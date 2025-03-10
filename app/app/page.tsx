@@ -1,7 +1,7 @@
 "use client";
 
+import AppContent from "@/components/AppContent";
 import { Suspense } from "react";
-import AppContent from "./AppContent";
 
 export default function AppPage() {
 	return (
