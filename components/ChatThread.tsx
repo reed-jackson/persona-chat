@@ -152,42 +152,60 @@ export default function ChatThread({ thread, persona, messages, onNewMessage, on
 		const supabase = createClient();
 
 		try {
-			// First, get all messages for this thread
-			const { data: threadMessages, error: messagesError } = await supabase
-				.from("messages")
-				.select("*")
-				.eq("thread_id", thread.id)
-				.order("created_at", { ascending: true });
-
-			if (messagesError) throw messagesError;
-
-			// Create a public thread entry
-			const { data: publicThread, error: insertError } = await supabase
+			// First check if this thread already has a public version
+			const { data: existingPublicThread, error: fetchError } = await supabase
 				.from("public_threads")
-				.insert({
-					thread_id: thread.id,
-					title: thread.title,
-					messages: threadMessages,
-					persona_details: {
-						name: persona.name,
-						title: persona.title,
-						experience: persona.experience,
-						industry: persona.industry,
-					},
-					created_by: (await supabase.auth.getUser()).data.user?.id || "",
-				})
-				.select()
+				.select("id")
+				.eq("thread_id", thread.id)
 				.single();
 
-			if (insertError) throw insertError;
+			if (fetchError && fetchError.code !== "PGRST116") {
+				// PGRST116 is "not found" error
+				throw fetchError;
+			}
 
-			// Create the shareable URL with the correct format
-			const shareUrl = `${window.location.origin}/public/thread/${publicThread.id}`;
+			let publicThreadId;
+
+			if (existingPublicThread) {
+				// Use existing public thread
+				publicThreadId = existingPublicThread.id;
+			} else {
+				// Create new public thread
+				const { data: threadMessages, error: messagesError } = await supabase
+					.from("messages")
+					.select("*")
+					.eq("thread_id", thread.id)
+					.order("created_at", { ascending: true });
+
+				if (messagesError) throw messagesError;
+
+				const { data: publicThread, error: insertError } = await supabase
+					.from("public_threads")
+					.insert({
+						thread_id: thread.id,
+						title: thread.title,
+						messages: threadMessages,
+						persona_details: {
+							name: persona.name,
+							title: persona.title,
+							experience: persona.experience,
+							industry: persona.industry,
+						},
+						created_by: (await supabase.auth.getUser()).data.user?.id || "",
+					})
+					.select()
+					.single();
+
+				if (insertError) throw insertError;
+				publicThreadId = publicThread.id;
+
+				// Update the thread with the public_id
+				await supabase.from("threads").update({ public_id: publicThread.id }).eq("id", thread.id);
+			}
+
+			// Create and copy the shareable URL
+			const shareUrl = `${window.location.origin}/public/thread/${publicThreadId}`;
 			await navigator.clipboard.writeText(shareUrl);
-
-			// Update the thread with the public_id
-			await supabase.from("threads").update({ public_id: publicThread.id }).eq("id", thread.id);
-
 			showSuccess("Share link copied to clipboard!");
 		} catch (err) {
 			console.error("Share error:", err);
